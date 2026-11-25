@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#b71919"><link rel="manifest" href="manifest.webmanifest">
+<title>الكودرهن - الحسابات والمصروفات</title>
+<style>
+:root{--p:#b71919;--dark:#921313;--out:#b45a18;--bg:#f2f5f3;--ink:#14221b;--muted:#68766f;--line:#dce5e0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,Arial,sans-serif}
+header{background:linear-gradient(130deg,var(--p),var(--dark));color:white;padding:20px 16px;border-radius:0 0 24px 24px}
+header b{font-size:27px}header small{display:block;margin-top:5px}
+main{max-width:850px;margin:16px auto 90px;padding:0 13px}
+.summary{background:linear-gradient(130deg,var(--p),var(--dark));color:white;padding:20px;border-radius:23px}
+.summary h3{margin:0;font-size:17px}.total{font-size:clamp(34px,9vw,52px);font-weight:bold;margin:12px 0 18px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.stat{background:#ffffff22;padding:12px;border-radius:14px}.stat small{display:block}.stat b{font-size:19px;display:block;margin-top:6px;overflow-wrap:anywhere}
+h2{font-size:20px;margin:20px 2px 10px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+button{border:0;border-radius:13px;padding:13px;font-weight:bold;font-size:15px;cursor:pointer}
+.in{background:var(--p);color:white}.out{background:var(--out);color:white}.light{background:#e7efea;color:var(--ink);border:1px solid var(--line)}
+.panel,.record{background:white;border:1px solid var(--line);border-radius:17px;padding:14px;margin:9px 0}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;background:white;font:inherit;margin:4px 0}
+.record{display:flex;justify-content:space-between;gap:10px;align-items:center}.meta{font-size:12px;color:var(--muted);margin-top:5px}.amount{font-weight:bold;white-space:nowrap}.amount.income{color:var(--p)}.amount.expense{color:var(--out)}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fffffff2;border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 10px calc(8px + env(safe-area-inset-bottom));gap:8px}
+nav button{flex:1;max-width:180px;background:transparent;color:var(--muted)}nav button.active{background:#f7e3e3;color:var(--p)}
+.view.hidden{display:none}.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.swatch{height:45px;border:3px solid white;box-shadow:0 0 0 1px #aaa}.swatch.sel{outline:3px solid #222}
+dialog{border:0;border-radius:20px;width:min(92vw,470px);padding:0;box-shadow:0 15px 50px #0005}dialog::backdrop{background:#0008}
+.dhead{background:var(--p);color:white;padding:15px;font-weight:bold;font-size:18px}.dbody{padding:15px;display:grid;gap:8px}.row{display:flex;gap:8px}.row button{flex:1}
+.note{color:var(--muted);font-size:13px;line-height:1.7}
+@media(min-width:650px){.grid{grid-template-columns:repeat(4,1fr)}main{padding:0 20px}}
+</style></head><body>
+<header><b>الكودرهن</b><small>الحسابات والمصروفات</small></header>
+<main>
+<section id="home" class="view">
+<div class="summary"><h3>الإجمالي الكلي (الوارد + المصروف)</h3><div class="total" id="total">0 جنيه</div>
+<div class="grid"><div class="stat"><small>إجمالي الوارد (+)</small><b id="income">0 جنيه</b></div>
+<div class="stat"><small>إجمالي المصروف (+)</small><b id="expense">0 جنيه</b></div>
+<div class="stat"><small>عمليات اليوم</small><b id="today">0</b></div><div class="stat"><small>عدد العمليات</small><b id="count">0</b></div></div></div>
+<h2>إضافة عملية</h2><div class="actions"><button class="in" onclick="openForm('وارد')">＋ إضافة وارد</button><button class="out" onclick="openForm('مصروف')">－ إضافة مصروف</button></div>
+<h2>آخر العمليات <button class="light" style="float:left" onclick="view('records')">عرض السجل</button></h2><div id="recent"></div>
+</section>
+<section id="records" class="view hidden"><h2>سجل العمليات</h2><input id="search" placeholder="بحث بالاسم أو رقم العملية" oninput="renderRecords()"><select id="filter" onchange="renderRecords()"><option>الكل</option><option>وارد</option><option>مصروف</option></select><div id="allRecords"></div></section>
+<section id="settings" class="view hidden"><h2>الإعدادات والألوان</h2><div class="panel"><p>اختر لون التطبيق</p><div class="swatches" id="swatches"></div><p>لون مخصص</p><input type="color" id="custom"></div>
+<div class="panel"><h3>حفظ البيانات</h3><p class="note">البيانات تحفظ على هذا الجهاز. احتفظ بنسخة احتياطية عند الحاجة.</p><div class="actions"><button class="light" onclick="backup()">تنزيل نسخة</button><button class="light" onclick="document.getElementById('file').click()">استيراد نسخة</button><input id="file" type="file" accept=".json" hidden onchange="restore(event)"></div></div>
+<div class="panel"><button class="light" style="width:100%" onclick="clearAll()">حذف جميع العمليات</button></div></section>
+</main>
+<nav><button class="active" data-v="home" onclick="view('home')">⌂<br>الرئيسية</button><button data-v="records" onclick="view('records')">☷<br>السجل</button><button data-v="settings" onclick="view('settings')">⚙<br>الإعدادات</button></nav>
+<dialog id="dlg"><div class="dhead" id="dlgTitle">عملية جديدة</div><form class="dbody" id="form">
+<input id="kind" type="hidden"><label>اسم العملية / البيان<input id="name" required></label>
+<label>رقم العملية<input id="number" required></label><label>المبلغ بالجنيه<input id="amount" type="number" min="1" step="1" required></label>
+<label>التاريخ<input id="date" type="date" required></label><label>ملاحظات<textarea id="note" rows="2"></textarea></label>
+<div class="row"><button class="in" type="submit">حفظ العملية</button><button class="light" type="button" onclick="dlg.close()">إلغاء</button></div></form></dialog>
+<script>
+const KEY='kodrhan_data_v1';let data={records:[],color:'#b71919'};
+const $=id=>document.getElementById(id),money=n=>Number(n||0).toLocaleString('en-US')+' جنيه',today=()=>new Date().toISOString().slice(0,10);
+function load(){try{data=JSON.parse(localStorage.getItem(KEY))||data;if(!Array.isArray(data.records))data.records=[]}catch(e){}}
+function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function setColor(c){data.color=c;document.documentElement.style.setProperty('--p',c);document.documentElement.style.setProperty('--dark',shade(c));$('custom').value=c;save();drawColors()}
+function shade(h){let n=parseInt(h.slice(1),16),f=x=>Math.round(x*.78);return '#'+[f(n>>16),f((n>>8)&255),f(n&255)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function sums(){let i=0,e=0;data.records.forEach(r=>r.type==='وارد'?i+=+r.amount:e+=+r.amount);return{i,e,t:i+e}}
+function card(r){let d=document.createElement('div');d.className='record';let a=document.createElement('div');a.innerHTML='<b></b><div class="meta"></div>';a.querySelector('b').textContent=r.name+' • '+r.type;a.querySelector('.meta').textContent='رقم العملية: '+r.number+' | '+r.date+(r.note?' | '+r.note:'');let b=document.createElement('b');b.className='amount '+(r.type==='وارد'?'income':'expense');b.textContent=money(r.amount);d.append(a,b);return d}
+function renderRecords(){let q=($('search')?.value||'').toLowerCase(),f=$('filter')?.value||'الكل',arr=[...data.records].sort((a,b)=>(b.created||'').localeCompare(a.created||'')).filter(r=>(f==='الكل'||r.type===f)&&(!q||(r.name+' '+r.number+' '+r.note).toLowerCase().includes(q)));$('allRecords').replaceChildren();if(!arr.length)$('allRecords').textContent='لا توجد عمليات مطابقة';arr.forEach(r=>$('allRecords').append(card(r)))}
+function render(){let s=sums();$('total').textContent=money(s.t);$('income').textContent=money(s.i);$('expense').textContent=money(s.e);$('count').textContent=data.records.length;$('today').textContent=data.records.filter(r=>r.date===today()).length;let recent=[...data.records].sort((a,b)=>(b.created||'').localeCompare(a.created||'')).slice(0,5);$('recent').replaceChildren();if(!recent.length)$('recent').textContent='لا توجد عمليات حتى الآن';recent.forEach(r=>$('recent').append(card(r)));renderRecords()}
+function openForm(type){$('form').reset();$('kind').value=type;$('date').value=today();$('dlgTitle').textContent='إضافة '+type;$('dlg').showModal()}
+$('form').onsubmit=e=>{e.preventDefault();let n=$('number').value.trim();if(data.records.some(r=>String(r.number).trim().toLowerCase()===n.toLowerCase())){alert('تحذير: رقم العملية ('+n+') مدخل مسبقاً. لا يمكن حفظ رقم مكرر.');$('number').focus();return}let amount=Number($('amount').value);if(!amount||amount<1){alert('أدخل مبلغاً صحيحاً');return}data.records.push({type:$('kind').value,name:$('name').value.trim(),number:n,amount:Math.round(amount),date:$('date').value,note:$('note').value.trim(),created:new Date().toISOString()});save();render();$('dlg').close()};
+function view(id){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('hidden',x.id!==id));document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.v===id));if(id==='records')renderRecords()}
+const colors=[['أحمر','#b71919'],['أخضر','#12603f'],['أزرق','#214a88'],['بنفسجي','#6426a8'],['برتقالي','#b85a12'],['تركوازي','#126a78'],['رمادي','#344256'],['وردي','#a51e5b']];
+function drawColors(){$('swatches').replaceChildren();colors.forEach(([n,c])=>{let b=document.createElement('button');b.className='swatch'+(data.color===c?' sel':'');b.style.background=c;b.title=n;b.onclick=()=>setColor(c);$('swatches').append(b)})}
+$('custom').oninput=e=>setColor(e.target.value);
+function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download='kodrhan-backup.json';a.click();URL.revokeObjectURL(u)}
+async function restore(e){try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.records))throw Error('ملف غير صالح');let seen=new Set(data.records.map(r=>String(r.number).toLowerCase())),added=0,skip=0;d.records.forEach(r=>{let n=String(r.number||'').toLowerCase();if(!n||seen.has(n)){skip++;return}if(['وارد','مصروف'].includes(r.type)&&Number(r.amount)>0){data.records.push(r);seen.add(n);added++}});if(d.color)data.color=d.color;setColor(data.color);save();render();alert('تمت إضافة '+added+' عملية وتجاهل '+skip+' رقم مكرر')}catch(err){alert('تعذر استيراد النسخة: '+err.message)}e.target.value=''}
+function clearAll(){if(confirm('هل تريد حذف جميع العمليات نهائياً؟')){data.records=[];save();render()}}
+load();setColor(data.color);render();
+if('serviceWorker'in navigator&&location.protocol!=='file:')addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script></body></html>
