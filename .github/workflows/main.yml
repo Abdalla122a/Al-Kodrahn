@@ -1,48 +1,235 @@
-name: Build Android APK with Buildozer
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مدير المصاريف</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body {
+      margin: 0;
+      background: #f3f5f8;
+      color: #1e293b;
+      padding: 20px;
+    }
+    .app {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+    h1 {
+      margin: 0 0 16px;
+      font-size: 1.4rem;
+      text-align: center;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+    .card span {
+      display: block;
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    .card strong { font-size: 1.05rem; }
+    .income { color: #15803d; }
+    .expense { color: #b91c1c; }
+    .balance { color: #0f172a; }
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - "**"
+    form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input, select, button {
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.95rem;
+    }
+    input:focus, select:focus {
+      outline: 2px solid #2563eb;
+      border-color: transparent;
+    }
+    .full { grid-column: 1 / -1; }
+    button.add-btn {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.add-btn:hover { background: #1d4ed8; }
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .item-title { font-weight: 600; }
+    .item-type { font-size: 0.8rem; color: #64748b; }
+    .item-right { display: flex; align-items: center; gap: 10px; }
+    .del-btn {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .empty {
+      text-align: center;
+      color: #64748b;
+      padding: 18px 0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>مدير المصاريف</h1>
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    <div class="summary">
+      <div class="card">
+        <span>الدخل</span>
+        <strong id="total-income" class="income">0.00</strong>
+      </div>
+      <div class="card">
+        <span>المصاريف</span>
+        <strong id="total-expense" class="expense">0.00</strong>
+      </div>
+      <div class="card">
+        <span>المتبقي</span>
+        <strong id="balance" class="balance">0.00</strong>
+      </div>
+    </div>
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+    <form id="tx-form">
+      <input type="text" id="title" placeholder="الوصف (مثال: بقالة، راتب)" required />
+      <input type="number" id="amount" placeholder="المبلغ" step="0.01" min="0.01" required />
+      <select id="type">
+        <option value="expense">مصروف</option>
+        <option value="income">دخل</option>
+      </select>
+      <button type="submit" class="add-btn">إضافة عملية</button>
+    </form>
 
-      - name: Install system dependencies for Buildozer
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+    <ul id="tx-list"></ul>
+  </div>
 
-      - name: Install Buildozer & Cython
-        run: |
-          pip install --upgrade pip
-          pip install buildozer cython==0.29.36 virtualenv
+  <script>
+    const STORAGE_KEY = "expenses_app_items_v1";
+    let items = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
-      - name: Cache Buildozer & Android SDK/NDK
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.buildozer
-            .buildozer
-          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+    const form = document.getElementById("tx-form");
+    const titleInput = document.getElementById("title");
+    const amountInput = document.getElementById("amount");
+    const typeInput = document.getElementById("type");
+    const listEl = document.getElementById("tx-list");
+    const incomeEl = document.getElementById("total-income");
+    const expenseEl = document.getElementById("total-expense");
+    const balanceEl = document.getElementById("balance");
 
-      - name: Build APK
-        run: |
-          buildozer android debug
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug-apk
-          path: bin/*.apk
+    function render() {
+      let income = 0;
+      let expense = 0;
+
+      listEl.innerHTML = "";
+
+      if (items.length === 0) {
+        listEl.innerHTML = '<li class="empty">لا توجد عمليات مسجلة بعد.</li>';
+      } else {
+        items.forEach((item) => {
+          if (item.type === "income") income += item.amount;
+          else expense += item.amount;
+
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div>
+              <div class="item-title">${escapeHtml(item.title)}</div>
+              <div class="item-type">${item.type === "income" ? "دخل" : "مصروف"}</div>
+            </div>
+            <div class="item-right">
+              <strong class="${item.type === "income" ? "income" : "expense"}">
+                ${item.type === "income" ? "+" : "-"}${item.amount.toFixed(2)}
+              </strong>
+              <button class="del-btn" onclick="removeItem('${item.id}')">حذف</button>
+            </div>
+          `;
+          listEl.appendChild(li);
+        });
+      }
+
+      const balance = income - expense;
+      incomeEl.textContent = income.toFixed(2);
+      expenseEl.textContent = expense.toFixed(2);
+      balanceEl.textContent = balance.toFixed(2);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    window.removeItem = function(id) {
+      items = items.filter((i) => i.id !== id);
+      save();
+      render();
+    };
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = titleInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+      const type = typeInput.value;
+      if (!title || isNaN(amount) || amount <= 0) return;
+
+      items.unshift({
+        id: Date.now().toString(),
+        title,
+        amount,
+        type
+      });
+
+      save();
+      render();
+      form.reset();
+      titleInput.focus();
+    });
+
+    render();
+  </script>
+</body>
+</html>
