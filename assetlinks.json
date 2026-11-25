@@ -1,8 +1,0 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "app.netlify.network_accounts_cash.twa",
-        "sha256_cert_fingerprints": ["E0:CC:51:49:F0:EA:B5:F4:15:13:48:C2:75:55:DA:CD:DB:0D:54:ED:F9:50:3E:FA:89:C0:3E:D8:C0:35:3E:E0"]
-      }
-    }]
